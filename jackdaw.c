@@ -8,7 +8,7 @@ unsigned int samplerate = 44100;
 #define channel 2
 #define bitdepth 16
 
-struct Note score[1024];
+struct Note score[65536];
 int size;
 
 double tonic = 440;
@@ -17,7 +17,7 @@ void write2bit(int fd, unsigned short data){ write(fd, &data, 2); }
 void write4bit(int fd, unsigned int data){ write(fd, &data, 4); }
 
 double sine(double, double, double);
-double (*sound[10])(double, double, double) = {sine};
+double (*sound[1])(double, double, double) = {sine};
 
 void writeout(int);
 
@@ -25,11 +25,18 @@ int main(int argc, char *argv[]){
 	char *out_filename = NULL;
 
 	int opt;
-	while((opt = getopt(argc, argv, "o:")) != -1){
+	while((opt = getopt(argc, argv, "vho:")) != -1){
 		switch(opt){
+		case 'v':
+			write(1, "jackdaw ver1.0\n", 15);
+			return 0;
 		case 'o':
 			out_filename = optarg;
 			break;
+		case 'h':
+		default:
+			write(1, "usage: jackdaw [-v : version] [-h : show this help] [-o <file> : output into <file>]\n", 85);
+			return 0;
 		}
 	}
 
@@ -54,7 +61,7 @@ int main(int argc, char *argv[]){
 
 
 void writeout(int fd){
-	static signed short buffer[100000000][2];
+	static signed short buffer[16777216][2];
 	int buffersize = 0;
 
 	for(int i = 0; i < size; ++i){

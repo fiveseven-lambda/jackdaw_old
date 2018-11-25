@@ -2,24 +2,19 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <math.h>
 #include "read.h"
-
-#define Word_len 16
 
 void *fileopen(char filename[]){
 	return fopen(filename, "r");
 }
 
 extern unsigned int samplerate;
-
 extern struct Note score[];
 extern int size;
-
 extern double tonic;
 
 char readin(void *fp){
-	char command[Word_len], arg[100000];
+	static char command[8], arg[65536];
 	while(isspace(command[0] = getc(fp)));
 	if(command[0] == EOF){
 		fclose(fp);
@@ -39,6 +34,9 @@ char readin(void *fp){
 			if(a == '\n') putchar('\n');
 		}else if(!strcmp(command, "system")){
 			system(arg);
+		}else if(!strcmp(command, "import")){
+			FILE *header = fopen(arg, "r");
+			while(readin(header));
 		}else if(!strcmp(command, "score")){
 			unsigned int instrument = 0;
 			double tempo = 60, velocity = 1, tonic = 440;
@@ -48,11 +46,11 @@ char readin(void *fp){
 			double decimal = 0;
 			unsigned int utmp;
 			double dtmp = 0;
-			double rhythm[16] = {0};
+			double rhythm[64] = {0};
 			unsigned beat = 0, repeat = 1;
 			for(int j = 0;; ++j){
 				switch(arg[j]){
-					case '[':
+					case '(':
 						++j;
 						while(isspace(arg[j])) ++j;
 						int k = 0;
@@ -60,16 +58,15 @@ char readin(void *fp){
 						arg[j + k] = '\0';
 						k += j + 1;
 						int l = 0;
-						while(arg[k + l] != ']') ++l;
-						arg[k + l] = '\0';
+						while(arg[k + l] != ')') ++l;
 						if(!strcmp(arg + j, "tonic")) sscanf(arg + k, "%lf", &tonic);
 						else if(!strcmp(arg + j, "tempo")) sscanf(arg + k, "%lf", &tempo);
 						else if(!strcmp(arg + j, "velocity")) sscanf(arg + k, "%lf", &velocity);
 						else if(!strcmp(arg + j, "rhythm")){
-							repeat = 0;
+							beat = repeat = 0;
 							for(int m = 0, n = 0, o = 0; !repeat; ++o){
 								while(arg[k + n] != ','){
-									if(!arg[k + n]){
+									if(arg[k + n] == ')'){
 										repeat = o + 1;
 										break;
 									}
@@ -81,6 +78,11 @@ char readin(void *fp){
 							}
 						}
 						j = k + l;
+						break;
+					case '#':
+						++j;
+						a = (arg[j] == '#' ? '\n' : '#');
+						while(arg[j] != a) ++j;
 						break;
 					case ',':
 					case '/':
@@ -107,6 +109,8 @@ char readin(void *fp){
 						utmp = 0;
 						for(; arg[j] != '>'; ++j) if('0' <= arg[j] && arg[j] <= '9') utmp = utmp * 10 + (arg[j] - '0');
 						score[size].frequency /= utmp;
+						dtmp = 0;
+						decimal = 0;
 						break;
 					case ':':
 						score[size].velocity = velocity * (flag == velocity_specified ? dtmp : 1);
@@ -126,7 +130,7 @@ char readin(void *fp){
 				}
 			}
 		}else{
-			char name[Word_len];
+			char name[11];
 			i = 0;
 			while(isspace(name[0] = arg[i])) ++i;
 			int j = 1;
