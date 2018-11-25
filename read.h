@@ -1,7 +1,7 @@
 struct Note{
 	unsigned int instrument;
 	double velocity;
-	double height;
+	double frequency;
 	double start, end;
 };
 
