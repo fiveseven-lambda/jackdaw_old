@@ -37,6 +37,12 @@ char readin(void *fp){
 		}else if(!strcmp(command, "import")){
 			FILE *header = fopen(arg, "r");
 			while(readin(header));
+		}else if(!strcmp(command, "debug")){
+			if(!strcmp(arg, "print score")){
+				for(int j = 0; j < size; ++j){
+					printf("%d [%lf, %lf] vel=%lf freq=%lf\n", j, score[j].start, score[j].end, score[j].velocity, score[j].frequency);
+				}
+			}
 		}else if(!strcmp(command, "score")){
 			unsigned int instrument = 0;
 			double tempo = 60, velocity = 1, tonic = 440;
@@ -98,6 +104,8 @@ char readin(void *fp){
 						if(arg[j] == '/' || arg[j] == '|') cursor = start;
 						++size;
 						flag = nothing;
+						decimal = 0;
+						dtmp = 0;
 						if(arg[j] == '\0') return 1;
 						break;
 					case '<':
@@ -110,7 +118,6 @@ char readin(void *fp){
 						for(; arg[j] != '>'; ++j) if('0' <= arg[j] && arg[j] <= '9') utmp = utmp * 10 + (arg[j] - '0');
 						score[size].frequency /= utmp;
 						dtmp = 0;
-						decimal = 0;
 						break;
 					case ':':
 						score[size].velocity = velocity * (flag == velocity_specified ? dtmp : 1);
@@ -120,6 +127,9 @@ char readin(void *fp){
 						break;
 					case '.':
 						decimal = 1;
+						break;
+					case '+':
+						if(flag == colon) dtmp = (end - cursor) * tempo / 60;
 						break;
 					default:
 						if('0' <= arg[j] && arg[j] <= '9'){
