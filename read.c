@@ -37,12 +37,6 @@ char readin(void *fp){
 		}else if(!strcmp(command, "import")){
 			FILE *header = fopen(arg, "r");
 			while(readin(header));
-		}else if(!strcmp(command, "debug")){
-			if(!strcmp(arg, "print score")){
-				for(int j = 0; j < size; ++j){
-					printf("%d [%lf, %lf] vel=%lf freq=%lf\n", j, score[j].start, score[j].end, score[j].velocity, score[j].frequency);
-				}
-			}
 		}else if(!strcmp(command, "score")){
 			unsigned int instrument = 0;
 			double tempo = 60, velocity = 1, tonic = 440;
@@ -82,6 +76,10 @@ char readin(void *fp){
 								sscanf(arg + k + m, "%lf", rhythm + o);
 								m = n+++1;
 							}
+						}else if(!strcmp(arg + j, "modulate")){
+							unsigned utmp1, utmp2;
+							sscanf(arg + k, "%u/%u", &utmp1, &utmp2);
+							tonic = tonic * utmp1 / utmp2;
 						}
 						j = k + l;
 						break;
@@ -139,7 +137,13 @@ char readin(void *fp){
 						}
 				}
 			}
-		}else{
+		}/*else if(!strcmp(command, "debug")){
+			if(!strcmp(arg, "print score")){
+				for(int j = 0; j < size; ++j){
+					printf("%d [%lf, %lf] vel=%lf freq=%lf\n", j, score[j].start, score[j].end, score[j].velocity, score[j].frequency);
+				}
+			}
+		}*/else{
 			char name[11];
 			i = 0;
 			while(isspace(name[0] = arg[i])) ++i;

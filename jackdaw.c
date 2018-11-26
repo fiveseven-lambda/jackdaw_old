@@ -59,7 +59,6 @@ int main(int argc, char *argv[]){
 	close(out);
 }
 
-
 void writeout(int fd){
 	static signed short buffer[16777216][2];
 	int buffersize = 0;
@@ -73,7 +72,6 @@ void writeout(int fd){
 		}
 		if(buffersize < j) buffersize = j;
 	}
-
 	write(fd, "RIFF", 4);
 	write4bit(fd, buffersize * bitdepth / 8 * 2 + 36);
 	write(fd, "WAVEfmt ", 8);
