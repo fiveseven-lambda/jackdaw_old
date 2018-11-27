@@ -11,8 +11,6 @@ unsigned int samplerate = 44100;
 struct Note score[65536];
 int size;
 
-double tonic = 440;
-
 void write2bit(int fd, unsigned short data){ write(fd, &data, 2); }
 void write4bit(int fd, unsigned int data){ write(fd, &data, 4); }
 
@@ -88,5 +86,5 @@ void writeout(int fd){
 }
 
 double sine(double t, double T, double f){
-	return sin(2 * M_PI * f * t) * (T < .01 ? T * 100 : 1) * (1 - T / 3) * (T > .9 ? (1 - T) * 10 : 1);
+	return sin(2 * M_PI * f * t) * (T < .01 ? T * 100 : 1) * (T > .99 ? (1 - T) * 100 : 1) * .99;
 }

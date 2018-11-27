@@ -1,0 +1,2 @@
+score (tonic 262) (rhythm 1)
+define minor = (modulate 5/6)
