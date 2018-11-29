@@ -11,6 +11,7 @@ void *fileopen(char filename[]){
 extern unsigned int samplerate;
 extern struct Note score[];
 extern int size;
+extern double end;
 
 char str[64][2][65536];
 int nstr;
@@ -51,7 +52,6 @@ char readin(void *fp){
 		}else if(!strcmp(command, "score")){
 			static unsigned int instrument = 0;
 			static double tempo = 60, velocity = 1, tonic = 440;
-			static double end = 0;
 			double start = end, cursor = start;
 			enum {nothing, velocity_specified, colon} flag;
 			char notempty = 0;
@@ -111,11 +111,11 @@ char readin(void *fp){
 							if(!score[size].frequency) score[size].frequency = tonic;
 							if(flag != colon) score[size].velocity = velocity * (flag == velocity_specified ? dtmp : 1);
 							score[size].instrument = instrument;
-							if(arg[j] == '/' || arg[j] == '|' || arg[j] == '\0') if(end < cursor) end = cursor;
-							if(arg[j] == '|') start = end;
-							if(arg[j] == '/' || arg[j] == '|') cursor = start;
 							++size;
 						}
+						if(arg[j] == '/' || arg[j] == '|' || arg[j] == '\0') if(end < cursor) end = cursor;
+						if(arg[j] == '|') start = end;
+						if(arg[j] == '/' || arg[j] == '|') cursor = start;
 						if(arg[j] == '\0') return 1;
 						notempty = 0;
 						flag = nothing;

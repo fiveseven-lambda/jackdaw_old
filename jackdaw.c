@@ -1,7 +1,9 @@
-#include <unistd.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <math.h>
+#include <string.h>
 #include "read.h"
 
 unsigned int samplerate = 44100;
@@ -10,9 +12,7 @@ unsigned int samplerate = 44100;
 
 struct Note score[65536];
 int size;
-
-void write2bit(int fd, unsigned short data){ write(fd, &data, 2); }
-void write4bit(int fd, unsigned int data){ write(fd, &data, 4); }
+double end;
 
 double sine(double, double, double);
 double (*sound[1])(double, double, double) = {sine};
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
 	while((opt = getopt(argc, argv, "vho:")) != -1){
 		switch(opt){
 		case 'v':
-			write(1, "jackdaw ver1.0\n", 15);
+			write(1, "jackdaw ver2.0\n", 15);
 			return 0;
 		case 'o':
 			out_filename = optarg;
@@ -52,39 +52,49 @@ int main(int argc, char *argv[]){
 		while(readin(in));
 	}
 
-	int out = creat(out_filename, S_IWUSR | S_IRUSR);
-	writeout(out);
+	int out = open(out_filename, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
+	int mapsize = end * samplerate * bitdepth / 8 * channel + 44;
+	lseek(out, mapsize - 1, SEEK_SET);
+	char c = 0;
+	write(out, &c, 1);
+	lseek(out, 0, SEEK_SET);
+	signed short *map = mmap(NULL, mapsize, PROT_WRITE, MAP_SHARED, out, 0);
+	((char *)map)[0] = 'R';
+	((char *)map)[1] = 'I';
+	((char *)map)[2] = 'F';
+	((char *)map)[3] = 'F';
+	((unsigned int *)map)[1] = mapsize - 8;
+	((char *)map)[8] = 'W';
+	((char *)map)[9] = 'A';
+	((char *)map)[10] = 'V';
+	((char *)map)[11] = 'E';
+	((char *)map)[12] = 'f';
+	((char *)map)[13] = 'm';
+	((char *)map)[14] = 't';
+	((char *)map)[15] = ' ';
+	((unsigned int *)map)[4] = 16;
+	((unsigned short *)map)[10] = 1;
+	((unsigned short *)map)[11] = channel;
+	((unsigned int *)map)[6] = samplerate;
+	((unsigned int *)map)[7] = samplerate * bitdepth / 8 * channel;
+	((unsigned short *)map)[16] = channel * bitdepth / 8;
+	((unsigned short *)map)[17] = bitdepth;
+	((char *)map)[36] = 'd';
+	((char *)map)[37] = 'a';
+	((char *)map)[38] = 't';
+	((char *)map)[39] = 'a';
+	((unsigned int *)map)[10] = mapsize - 44;
+	memset(map + 44, 0, mapsize - 44);
+	for(int i = 0; i < size; ++i){
+		for(int j = score[i].start * samplerate; j < score[i].end * samplerate; ++j){
+			signed short tmp = sound[score[i].instrument]((double)j / samplerate - score[i].start, score[i].end - score[i].start, score[i].frequency) * score[i].velocity * pow(2, 15);
+			map[j * 2 + 44] += tmp;
+			map[j * 2 + 1 + 44] += tmp;
+		}
+	}
 	close(out);
 }
 
-void writeout(int fd){
-	static signed short buffer[16777216][2];
-	int buffersize = 0;
-
-	for(int i = 0; i < size; ++i){
-		int j;
-		for(j = score[i].start * samplerate; j < score[i].end * samplerate; ++j){
-			signed short tmp = sound[score[i].instrument]((double)j / samplerate, ((double)j / samplerate - score[i].start) / (score[i].end - score[i].start), score[i].frequency) * pow(2, 15) * score[i].velocity;
-			buffer[j][0] += tmp;
-			buffer[j][1] += tmp;
-		}
-		if(buffersize < j) buffersize = j;
-	}
-	write(fd, "RIFF", 4);
-	write4bit(fd, buffersize * bitdepth / 8 * 2 + 36);
-	write(fd, "WAVEfmt ", 8);
-	write4bit(fd, 16);
-	write2bit(fd, 1);
-	write2bit(fd, channel);
-	write4bit(fd, samplerate);
-	write4bit(fd, samplerate * bitdepth / 8 * channel);
-	write2bit(fd, channel * bitdepth / 8);
-	write2bit(fd, bitdepth);
-	write(fd, "data", 4);
-	write4bit(fd, buffersize * bitdepth / 8 * 2);
-	write(fd, buffer, buffersize * bitdepth / 8 * 2);
-}
-
 double sine(double t, double T, double f){
-	return sin(2 * M_PI * f * t) * (T < .01 ? T * 100 : 1) * (T > .99 ? (1 - T) * 100 : 1) * .99;
+	return sin(2 * M_PI * f * t) * (t/T < .01 ? t/T * 100 : 1) * (t/T > .99 ? (1 - t/T) * 100 : 1) * .99;
 }
