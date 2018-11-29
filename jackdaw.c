@@ -2,8 +2,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <math.h>
 #include <string.h>
+#include <math.h>
 #include "read.h"
 
 unsigned int samplerate = 44100;
@@ -14,10 +14,11 @@ struct Note score[65536];
 int size;
 double end;
 
-double sine(double, double, double);
-double (*sound[1])(double, double, double) = {sine};
-
 void writeout(int);
+
+double sine(double t, double T, double f){
+	return sin(2 * M_PI * f * t) * (1 - t/T);
+}
 
 int main(int argc, char *argv[]){
 	char *out_filename = NULL;
@@ -51,7 +52,7 @@ int main(int argc, char *argv[]){
 		void *in = fileopen(argv[optind]);
 		while(readin(in));
 	}
-
+	
 	int out = open(out_filename, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
 	int mapsize = end * samplerate * bitdepth / 8 * channel + 44;
 	lseek(out, mapsize - 1, SEEK_SET);
@@ -87,14 +88,12 @@ int main(int argc, char *argv[]){
 	memset(map + 44, 0, mapsize - 44);
 	for(int i = 0; i < size; ++i){
 		for(int j = score[i].start * samplerate; j < score[i].end * samplerate; ++j){
-			signed short tmp = sound[score[i].instrument]((double)j / samplerate - score[i].start, score[i].end - score[i].start, score[i].frequency) * score[i].velocity * pow(2, 15);
+			signed short tmp = sine((double)j / samplerate - score[i].start, score[i].end - score[i].start, score[i].frequency) * score[i].velocity * (1 << 15);
 			map[j * 2 + 44] += tmp;
 			map[j * 2 + 1 + 44] += tmp;
 		}
 	}
 	close(out);
+	munmap(map, mapsize);
 }
 
-double sine(double t, double T, double f){
-	return sin(2 * M_PI * f * t) * (t/T < .01 ? t/T * 100 : 1) * (t/T > .99 ? (1 - t/T) * 100 : 1) * .99;
-}

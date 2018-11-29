@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <math.h>
 #include "read.h"
 
 void *fileopen(char filename[]){
@@ -16,8 +17,11 @@ extern double end;
 char str[64][2][65536];
 int nstr;
 
+int num;
+char inst_name[64][64];
+
 char readin(void *fp){
-	static char command[8], arg[65536];
+	static char command[16], arg[65536];
 	while(isspace(command[0] = getc(fp)));
 	if(command[0] == EOF){
 		fclose(fp);
@@ -61,11 +65,11 @@ char readin(void *fp){
 			static unsigned beat = 0, repeat = 1;
 			for(int j = 0;; ++j){
 				switch(arg[j]){
+					int k;
 					case '(':
 						++j;
 						while(isspace(arg[j])) ++j;
-						int k = 0;
-						while(isalpha(arg[j + k])) ++k;
+						for(k = 0; isalpha(arg[j + k]); ++k);
 						arg[j + k] = '\0';
 						k += j + 1;
 						int l = 0;
@@ -93,6 +97,17 @@ char readin(void *fp){
 							tonic = tonic * utmp1 / utmp2;
 						}
 						j = k + l;
+						break;
+					case '[':
+						++j;
+						for(k = 0; (arg[j + k] != ']') || (arg[j + k] = '\0'); ++k);
+						for(int l = 0; l < num; ++l){
+							if(!strcmp(arg + j, inst_name[l])){
+								instrument = l;
+								break;
+							}
+						}
+						j += k;
 						break;
 					case '_': break;
 					case '#':
@@ -158,7 +173,7 @@ char readin(void *fp){
 		}/*else if(!strcmp(command, "debug")){
 			if(!strcmp(arg, "print score")){
 				for(int j = 0; j < size; ++j){
-					printf("%d [%lf, %lf] vel=%lf freq=%lf\n", j, score[j].start, score[j].end, score[j].velocity, score[j].frequency);
+					printf("[%3d] from %f s to %f s; velocity=%f frequency=%f instrument=%s\n", j, score[j].start, score[j].end, score[j].velocity, score[j].frequency, inst_name[score[j].instrument]);
 				}
 			}
 		}*/else{
@@ -174,6 +189,9 @@ char readin(void *fp){
 				strcpy(str[nstr][0], name);
 				strcpy(str[nstr][1], val);
 				++nstr;
+			}else if(!strcmp(command, "instrument")){
+				strcpy(inst_name[num], name);
+				++num;
 			}
 		}
 		return 1;
